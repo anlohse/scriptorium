@@ -1,0 +1,244 @@
+@import 'tippy.js/dist/tippy.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f8f7f4;
+    color: #1a1410;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+}
+
+@layer components {
+  .sidebar-item {
+    @apply flex items-center gap-2 px-3 py-1.5 rounded-md text-sm cursor-pointer transition-colors;
+    @apply text-ink-muted hover:bg-surface-100 hover:text-ink;
+  }
+
+  .sidebar-item.active {
+    @apply bg-surface-200 text-ink font-medium;
+  }
+
+  .btn {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent text-white hover:bg-accent-dark;
+  }
+
+  .btn-ghost {
+    @apply btn text-ink-muted hover:bg-surface-100 hover:text-ink;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-500 text-white hover:bg-red-600;
+  }
+
+  .input {
+    @apply w-full px-3 py-2 bg-white border border-surface-200 rounded-md text-sm text-ink outline-none;
+    @apply focus:border-accent focus:ring-1 focus:ring-accent/30;
+  }
+
+  .tag {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+  }
+
+  .tag-character { @apply tag bg-blue-100 text-blue-700; }
+  .tag-location { @apply tag bg-green-100 text-green-700; }
+  .tag-event { @apply tag bg-orange-100 text-orange-700; }
+  .tag-faction { @apply tag bg-purple-100 text-purple-700; }
+  .tag-item { @apply tag bg-yellow-100 text-yellow-700; }
+  .tag-concept { @apply tag bg-pink-100 text-pink-700; }
+}
+
+/* Tiptap editor styles */
+.ProseMirror {
+  outline: none;
+  min-height: 100%;
+  font-family: Georgia, Cambria, 'Times New Roman', serif;
+  font-size: 1.0625rem;
+  line-height: 1.8;
+  color: #1a1410;
+  caret-color: #7c5cbf;
+  user-select: text;
+}
+
+.ProseMirror p { margin: 0 0 0.75em; }
+.ProseMirror h1 { font-size: 1.75rem; font-weight: 700; margin: 1.5em 0 0.5em; }
+.ProseMirror h2 { font-size: 1.4rem; font-weight: 600; margin: 1.25em 0 0.5em; }
+.ProseMirror h3 { font-size: 1.15rem; font-weight: 600; margin: 1em 0 0.4em; }
+.ProseMirror em { font-style: italic; }
+.ProseMirror strong { font-weight: 700; }
+.ProseMirror ul, .ProseMirror ol { padding-left: 1.5em; margin: 0.5em 0; }
+.ProseMirror li { margin: 0.25em 0; }
+.ProseMirror blockquote {
+  border-left: 3px solid #a99880;
+  margin: 1em 0;
+  padding-left: 1em;
+  color: #6b5d4e;
+  font-style: italic;
+}
+.ProseMirror hr { border: none; border-top: 1px solid #e0d9cc; margin: 2em 0; }
+.ProseMirror code {
+  background: #f0ede6;
+  border-radius: 3px;
+  padding: 0.1em 0.3em;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 0.875em;
+}
+.ProseMirror pre {
+  background: #f0ede6;
+  border-radius: 6px;
+  padding: 1em;
+  overflow-x: auto;
+}
+.ProseMirror pre code { background: none; padding: 0; }
+
+.ProseMirror a { color: #7c5cbf; text-decoration: underline; }
+
+/* Mention styles */
+.mention {
+  background: #ede8f8;
+  color: #7c5cbf;
+  border-radius: 4px;
+  padding: 0 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* Placeholder */
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #a99880;
+  pointer-events: none;
+  height: 0;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c8bcaa; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #a99880; }
+
+/* Mentions dropdown */
+.tippy-box[data-theme~='mentions'] {
+  background: white;
+  border: 1px solid #e0d9cc;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  padding: 4px;
+}
+
+.mention-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #1a1410;
+}
+
+.mention-item:hover,
+.mention-item.is-selected {
+  background: #f0ede6;
+}
+
+.mention-item-type {
+  font-size: 11px;
+  color: #a99880;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Entity Markdown viewer (prose-entity) */
+.prose-entity {
+  font-family: Georgia, Cambria, 'Times New Roman', serif;
+  font-size: 0.9375rem;
+  line-height: 1.75;
+  color: #1a1410;
+  user-select: text;
+}
+
+.prose-entity h1 { font-size: 1.25rem; font-weight: 700; margin: 0 0 0.6em; color: #1a1410; }
+.prose-entity h2 { font-size: 1.05rem; font-weight: 600; margin: 1.2em 0 0.4em; color: #2c2018; border-bottom: 1px solid #e0d9cc; padding-bottom: 0.2em; }
+.prose-entity h3 { font-size: 0.95rem; font-weight: 600; margin: 1em 0 0.35em; color: #2c2018; }
+.prose-entity p { margin: 0 0 0.65em; }
+.prose-entity ul, .prose-entity ol { padding-left: 1.4em; margin: 0.4em 0; }
+.prose-entity li { margin: 0.2em 0; }
+.prose-entity strong { font-weight: 700; }
+.prose-entity em { font-style: italic; }
+.prose-entity blockquote {
+  border-left: 3px solid #a99880;
+  margin: 0.8em 0;
+  padding-left: 0.8em;
+  color: #6b5d4e;
+  font-style: italic;
+}
+.prose-entity code {
+  background: #f0ede6;
+  border-radius: 3px;
+  padding: 0.1em 0.3em;
+  font-family: Consolas, monospace;
+  font-size: 0.82em;
+}
+.prose-entity pre {
+  background: #f0ede6;
+  border-radius: 6px;
+  padding: 0.75em 1em;
+  overflow-x: auto;
+  margin: 0.75em 0;
+}
+.prose-entity pre code { background: none; padding: 0; }
+.prose-entity table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  margin: 0.75em 0;
+}
+.prose-entity th, .prose-entity td {
+  border: 1px solid #e0d9cc;
+  padding: 4px 8px;
+  text-align: left;
+}
+.prose-entity th { background: #f5f2eb; font-weight: 600; }
+.prose-entity hr { border: none; border-top: 1px solid #e0d9cc; margin: 1.2em 0; }
+
+/* Entity link in markdown viewer */
+.entity-link {
+  background: #ede8f8;
+  color: #7c5cbf;
+  border-radius: 4px;
+  padding: 0 4px;
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 0.875em;
+}
+.entity-link:hover { background: #ddd5f5; }
+
+/* Prose editor (for readonly Tiptap in translation view) */
+.prose-editor .ProseMirror {
+  font-size: 0.9375rem;
+  line-height: 1.75;
+}
+

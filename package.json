@@ -1,0 +1,84 @@
+{
+  "name": "scriptorium",
+  "version": "0.1.0",
+  "description": "Desktop-first writing platform for long-form fiction",
+  "main": "./out/main/index.js",
+  "author": "Alan N. Lohse",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron-vite preview",
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "postinstall": "electron-builder install-app-deps",
+    "build:win": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win nsis",
+    "build:mac": "npm run build && electron-builder --mac",
+    "build:linux": "npm run build && electron-builder --linux"
+  },
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.1",
+    "@electron-toolkit/utils": "^3.0.0",
+    "@tiptap/extension-character-count": "^2.11.7",
+    "@tiptap/extension-image": "^2.11.7",
+    "@tiptap/extension-link": "^2.11.7",
+    "@tiptap/extension-mention": "^2.11.7",
+    "@tiptap/extension-placeholder": "^2.11.7",
+    "@tiptap/pm": "^2.11.7",
+    "@tiptap/react": "^2.11.7",
+    "@tiptap/starter-kit": "^2.11.7",
+    "@tiptap/suggestion": "^2.11.7",
+    "better-sqlite3": "^11.10.0",
+    "lucide-react": "^0.511.0",
+    "marked": "^15.0.12",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tippy.js": "^6.3.7",
+    "zustand": "^5.0.4"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.15.18",
+    "@types/react": "^18.3.22",
+    "@types/react-dom": "^18.3.6",
+    "@vitejs/plugin-react": "^4.5.1",
+    "autoprefixer": "^10.4.21",
+    "cross-env": "^7.0.3",
+    "electron": "^35.5.1",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^3.1.0",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3"
+  },
+  "build": {
+    "appId": "com.scriptorium.app",
+    "productName": "Scriptorium",
+    "icon": "build/ico_32x32.png",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "src/assets/ico_256x256.png",
+      "artifactName": "scriptorium-${version}-windows.${ext}"
+    },
+    "linux": {
+      "icon": "src/assets/ico_256x256.png"
+    },
+    "extraResources": [
+      {
+        "from": "src/assets/ico_256x256.png",
+        "to": "icon.png"
+      }
+    ],
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

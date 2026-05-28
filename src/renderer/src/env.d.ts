@@ -61,6 +61,7 @@ interface Window {
     }
     export: {
       run: (profile: Record<string, unknown>) => Promise<{ canceled?: boolean; success?: boolean; outputPath?: string; error?: string }>
+      docx: (request: Record<string, unknown>) => Promise<{ success: boolean; outputPath?: string; warnings: Array<{ code: string; message: string }>; error?: string }>
     }
     translation: {
       list: (documentId?: string) => Promise<import('./types').Translation[]>

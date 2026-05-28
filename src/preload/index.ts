@@ -75,7 +75,8 @@ const api = {
 
   // Export
   export: {
-    run: (profile: Record<string, unknown>) => ipcRenderer.invoke('export:run', profile)
+    run: (profile: Record<string, unknown>) => ipcRenderer.invoke('export:run', profile),
+    docx: (request: Record<string, unknown>) => ipcRenderer.invoke('export:docx', request)
   },
 
   // Translations

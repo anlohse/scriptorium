@@ -4,7 +4,9 @@ import { writeFileSync, mkdirSync } from 'fs'
 import { getCurrentProjectPath } from './project'
 import { listDocuments } from '../db/documents'
 import { getTranslationByDocLocale } from '../db/translations'
-import { readDocument, readTranslationFile } from '../fs'
+import { readDocument, readTranslationFile, readMetadata } from '../fs'
+import { exportDocx } from '../export/docx/service'
+import type { DocxExportRequest } from '../export/docx/types'
 
 export interface ExportProfile {
   name: string
@@ -118,6 +120,14 @@ function buildTranslationSection(md: string, docType: string, chapterCount: numb
 }
 
 export function registerExportHandlers(): void {
+  ipcMain.handle('export:docx', async (_event, request: DocxExportRequest) => {
+    const projectPath = getCurrentProjectPath()
+    if (!projectPath) return { success: false, warnings: [], error: 'No project open' }
+    const metadata = readMetadata(projectPath)
+    const projectName = metadata?.projectName || 'Untitled'
+    return exportDocx(projectPath, request, projectName)
+  })
+
   ipcMain.handle('export:run', async (_event, profile: ExportProfile) => {
     const projectPath = getCurrentProjectPath()
     if (!projectPath) return { success: false, error: 'No project open' }

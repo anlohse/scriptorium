@@ -124,6 +124,11 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
@@ -136,22 +141,49 @@ jobs:
           name: release-linux
           path: release-assets/linux
 
+      - name: Generate release notes
+        id: release_notes
+        shell: bash
+        run: |
+          current="${{ needs.prepare.outputs.release_version }}"
+
+          previous=$(git tag --sort=-v:refname | grep -v "^${current}$" | head -n 1 || true)
+
+          if [ -z "$previous" ]; then
+            notes=$(git log --pretty=format:"- %s (%h)" "$current")
+          else
+            notes=$(git log --pretty=format:"- %s (%h)" "$previous..$current")
+          fi
+
+          {
+            echo "body<<EOF"
+            echo "## Scriptorium $current"
+            echo ""
+            echo "Cross-platform release for Windows and Linux."
+            echo ""
+            echo "### Changes"
+            echo ""
+            if [ -z "$notes" ]; then
+              echo "- No commit changes found."
+            else
+              echo "$notes"
+            fi
+            echo ""
+            echo "### Installation"
+            echo ""
+            echo "| Platform | File | Notes |"
+            echo "|----------|------|-------|"
+            echo "| Windows  | \`.exe\` | NSIS installer — lets you choose install directory |"
+            echo "| Linux    | \`.AppImage\` | \`chmod +x\` then run directly, no install needed |"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ needs.prepare.outputs.release_version }}
           name: "Scriptorium ${{ needs.prepare.outputs.release_version }}"
-          body: |
-            ## Scriptorium ${{ needs.prepare.outputs.release_version }}
-
-            Cross-platform release for Windows and Linux.
-
-            ### Installation
-
-            | Platform | File | Notes |
-            |----------|------|-------|
-            | Windows  | `.exe` | NSIS installer — lets you choose install directory |
-            | Linux    | `.AppImage` | `chmod +x` then run directly, no install needed |
+          body: ${{ steps.release_notes.outputs.body }}
           files: |
             release-assets/win/*.exe
             release-assets/linux/*.AppImage

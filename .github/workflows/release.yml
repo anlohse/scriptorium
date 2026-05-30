@@ -145,14 +145,22 @@ jobs:
         id: release_notes
         shell: bash
         run: |
+          git fetch --tags --force
           current="${{ needs.prepare.outputs.release_version }}"
 
           previous=$(git tag --sort=-v:refname | grep -v "^${current}$" | head -n 1 || true)
 
-          if [ -z "$previous" ]; then
-            notes=$(git log --pretty=format:"- %s (%h)" "$current")
+          # workflow_dispatch may run before the tag is pushed; fall back to HEAD
+          if git rev-parse --verify "${current}" >/dev/null 2>&1; then
+            current_ref="${current}"
           else
-            notes=$(git log --pretty=format:"- %s (%h)" "$previous..$current")
+            current_ref="HEAD"
+          fi
+
+          if [ -z "$previous" ] || ! git rev-parse --verify "${previous}" >/dev/null 2>&1; then
+            notes=$(git log --pretty=format:"- %s (%h)" "${current_ref}")
+          else
+            notes=$(git log --pretty=format:"- %s (%h)" "${previous}..${current_ref}")
           fi
 
           {

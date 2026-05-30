@@ -5,13 +5,14 @@ import type { EntityType } from '../../types'
 interface Props {
   onSave: (data: { name: string; type: EntityType; summary: string; description: string; tags: string[]; aliases: string[] }) => Promise<void>
   onClose: () => void
+  initialType?: EntityType
 }
 
 const TYPES: EntityType[] = ['character', 'location', 'event', 'faction', 'item', 'concept']
 
-export function EntityForm({ onSave, onClose }: Props): React.ReactElement {
+export function EntityForm({ onSave, onClose, initialType }: Props): React.ReactElement {
   const [name, setName] = useState('')
-  const [type, setType] = useState<EntityType>('character')
+  const [type, setType] = useState<EntityType>(initialType ?? 'character')
   const [summary, setSummary] = useState('')
   const [saving, setSaving] = useState(false)
 

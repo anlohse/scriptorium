@@ -9,6 +9,7 @@ export interface Document {
   parent_id: string | null
   volume_id: string | null
   sort_order: number
+  is_folder: number
   tags: string[]
   word_count: number
   created_at: string
@@ -36,9 +37,9 @@ export function createDocument(data: Omit<Document, 'id' | 'created_at' | 'updat
   const id = randomUUID()
   const now = new Date().toISOString()
   db.prepare(`
-    INSERT INTO documents (id, title, path, type, parent_id, volume_id, sort_order, tags, word_count, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, data.title, data.path, data.type, data.parent_id, data.volume_id, data.sort_order, JSON.stringify(data.tags), data.word_count, now, now)
+    INSERT INTO documents (id, title, path, type, parent_id, volume_id, sort_order, is_folder, tags, word_count, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, data.title, data.path, data.type, data.parent_id, data.volume_id, data.sort_order, data.is_folder ?? 0, JSON.stringify(data.tags), data.word_count, now, now)
   return getDocument(id)!
 }
 

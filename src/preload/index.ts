@@ -26,7 +26,8 @@ const api = {
     delete: (id: string) => ipcRenderer.invoke('doc:delete', id),
     getContent: (id: string) => ipcRenderer.invoke('doc:getContent', id),
     syncMentions: (documentId: string, entityIds: string[]) => ipcRenderer.invoke('doc:syncMentions', documentId, entityIds),
-    reorder: (updates: Array<{ id: string; sort_order: number }>) => ipcRenderer.invoke('doc:reorder', updates)
+    reorder: (updates: Array<{ id: string; sort_order: number }>) => ipcRenderer.invoke('doc:reorder', updates),
+    move: (id: string, parentId: string | null) => ipcRenderer.invoke('doc:move', id, parentId)
   },
 
   // Volumes
@@ -49,7 +50,9 @@ const api = {
     getMentions: (entityId: string) => ipcRenderer.invoke('entity:getMentions', entityId),
     getRelations: (entityId: string) => ipcRenderer.invoke('entity:getRelations', entityId),
     getBody: (entityId: string) => ipcRenderer.invoke('entity:getBody', entityId),
-    saveBody: (entityId: string, content: string) => ipcRenderer.invoke('entity:saveBody', entityId, content)
+    saveBody: (entityId: string, content: string) => ipcRenderer.invoke('entity:saveBody', entityId, content),
+    reorder: (updates: Array<{ id: string; sort_order: number }>) => ipcRenderer.invoke('entity:reorder', updates),
+    move: (id: string, parentId: string | null) => ipcRenderer.invoke('entity:move', id, parentId)
   },
 
   // Relations

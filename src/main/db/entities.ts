@@ -5,6 +5,9 @@ export interface Entity {
   id: string
   name: string
   type: 'character' | 'location' | 'event' | 'faction' | 'item' | 'concept'
+  parent_id: string | null
+  is_folder: number
+  sort_order: number
   summary: string
   description: string
   tags: string[]
@@ -24,6 +27,9 @@ export interface Relation {
 function parseEntity(row: Record<string, unknown>): Entity {
   return {
     ...row,
+    parent_id: (row.parent_id as string | null) ?? null,
+    is_folder: (row.is_folder as number) ?? 0,
+    sort_order: (row.sort_order as number) ?? 0,
     tags: JSON.parse((row.tags as string) || '[]'),
     aliases: JSON.parse((row.aliases as string) || '[]')
   } as Entity
@@ -34,11 +40,19 @@ export function createEntity(data: Omit<Entity, 'id' | 'created_at' | 'updated_a
   const id = randomUUID()
   const now = new Date().toISOString()
   db.prepare(`
-    INSERT INTO entities (id, name, type, summary, description, tags, aliases, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(id, data.name, data.type, data.summary, data.description, JSON.stringify(data.tags), JSON.stringify(data.aliases), now, now)
+    INSERT INTO entities (id, name, type, parent_id, is_folder, sort_order, summary, description, tags, aliases, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id, data.name, data.type,
+    data.parent_id ?? null, data.is_folder ?? 0, data.sort_order ?? 0,
+    data.summary, data.description,
+    JSON.stringify(data.tags), JSON.stringify(data.aliases),
+    now, now
+  )
 
-  db.prepare('INSERT INTO entities_fts (id, name, summary, description) VALUES (?, ?, ?, ?)').run(id, data.name, data.summary, data.description)
+  if (!data.is_folder) {
+    db.prepare('INSERT INTO entities_fts (id, name, summary, description) VALUES (?, ?, ?, ?)').run(id, data.name, data.summary, data.description)
+  }
 
   return getEntity(id)!
 }
@@ -52,12 +66,15 @@ export function getEntity(id: string): Entity | null {
 export function updateEntity(id: string, data: Partial<Omit<Entity, 'id' | 'created_at'>>): Entity | null {
   const db = getDb()
   const now = new Date().toISOString()
-  const fields = Object.keys(data).map(k => `${k} = ?`).join(', ')
-  const values = Object.values(data).map(v => Array.isArray(v) ? JSON.stringify(v) : v)
+  const serialized = { ...data }
+  if (Array.isArray(serialized.tags)) serialized.tags = JSON.stringify(serialized.tags) as unknown as string[]
+  if (Array.isArray(serialized.aliases)) serialized.aliases = JSON.stringify(serialized.aliases) as unknown as string[]
+  const fields = Object.keys(serialized).map(k => `${k} = ?`).join(', ')
+  const values = Object.values(serialized)
   db.prepare(`UPDATE entities SET ${fields}, updated_at = ? WHERE id = ?`).run(...values, now, id)
 
   const entity = getEntity(id)
-  if (entity) {
+  if (entity && !entity.is_folder) {
     db.prepare('DELETE FROM entities_fts WHERE id = ?').run(id)
     db.prepare('INSERT INTO entities_fts (id, name, summary, description) VALUES (?, ?, ?, ?)').run(id, entity.name, entity.summary, entity.description)
   }
@@ -73,14 +90,44 @@ export function deleteEntity(id: string): void {
 export function listEntities(type?: string): Entity[] {
   const db = getDb()
   const rows = type
-    ? db.prepare('SELECT * FROM entities WHERE type = ? ORDER BY name ASC').all(type) as Record<string, unknown>[]
-    : db.prepare('SELECT * FROM entities ORDER BY name ASC').all() as Record<string, unknown>[]
+    ? db.prepare('SELECT * FROM entities WHERE type = ? ORDER BY is_folder DESC, sort_order ASC, name ASC').all(type) as Record<string, unknown>[]
+    : db.prepare('SELECT * FROM entities ORDER BY type ASC, is_folder DESC, sort_order ASC, name ASC').all() as Record<string, unknown>[]
   return rows.map(parseEntity)
+}
+
+export function countEntityChildren(parentId: string): number {
+  const db = getDb()
+  const row = db.prepare('SELECT COUNT(*) as count FROM entities WHERE parent_id = ?').get(parentId) as { count: number }
+  return row.count
+}
+
+export function isEntityDescendant(ancestorId: string, nodeId: string): boolean {
+  // Returns true if nodeId is a descendant of ancestorId
+  let currentId: string | null = nodeId
+  const visited = new Set<string>()
+  while (currentId) {
+    if (visited.has(currentId)) break // cycle guard
+    visited.add(currentId)
+    const row = getEntity(currentId)
+    if (!row) break
+    if (row.parent_id === ancestorId) return true
+    currentId = row.parent_id
+  }
+  return false
+}
+
+export function reorderEntities(updates: Array<{ id: string; sort_order: number }>): void {
+  const db = getDb()
+  const stmt = db.prepare('UPDATE entities SET sort_order = ? WHERE id = ?')
+  const runAll = db.transaction(() => {
+    for (const { id, sort_order } of updates) stmt.run(sort_order, id)
+  })
+  runAll()
 }
 
 export function searchEntitiesByName(query: string): Entity[] {
   const db = getDb()
-  const rows = db.prepare("SELECT * FROM entities WHERE name LIKE ? OR aliases LIKE ? ORDER BY name ASC").all(`%${query}%`, `%${query}%`) as Record<string, unknown>[]
+  const rows = db.prepare("SELECT * FROM entities WHERE is_folder = 0 AND (name LIKE ? OR aliases LIKE ?) ORDER BY name ASC").all(`%${query}%`, `%${query}%`) as Record<string, unknown>[]
   return rows.map(parseEntity)
 }
 
@@ -102,8 +149,8 @@ export function getEntityRelations(entityId: string): Array<Relation & { from_en
   const db = getDb()
   const rows = db.prepare(`
     SELECT r.*,
-      fe.id as fe_id, fe.name as fe_name, fe.type as fe_type, fe.summary as fe_summary, fe.description as fe_description, fe.tags as fe_tags, fe.aliases as fe_aliases, fe.created_at as fe_created_at, fe.updated_at as fe_updated_at,
-      te.id as te_id, te.name as te_name, te.type as te_type, te.summary as te_summary, te.description as te_description, te.tags as te_tags, te.aliases as te_aliases, te.created_at as te_created_at, te.updated_at as te_updated_at
+      fe.id as fe_id, fe.name as fe_name, fe.type as fe_type, fe.parent_id as fe_parent_id, fe.is_folder as fe_is_folder, fe.sort_order as fe_sort_order, fe.summary as fe_summary, fe.description as fe_description, fe.tags as fe_tags, fe.aliases as fe_aliases, fe.created_at as fe_created_at, fe.updated_at as fe_updated_at,
+      te.id as te_id, te.name as te_name, te.type as te_type, te.parent_id as te_parent_id, te.is_folder as te_is_folder, te.sort_order as te_sort_order, te.summary as te_summary, te.description as te_description, te.tags as te_tags, te.aliases as te_aliases, te.created_at as te_created_at, te.updated_at as te_updated_at
     FROM relations r
     JOIN entities fe ON r.from_entity_id = fe.id
     JOIN entities te ON r.to_entity_id = te.id
@@ -116,7 +163,7 @@ export function getEntityRelations(entityId: string): Array<Relation & { from_en
     to_entity_id: row.to_entity_id as string,
     relation_type: row.relation_type as string,
     created_at: row.created_at as string,
-    from_entity: parseEntity({ id: row.fe_id, name: row.fe_name, type: row.fe_type, summary: row.fe_summary, description: row.fe_description, tags: row.fe_tags, aliases: row.fe_aliases, created_at: row.fe_created_at, updated_at: row.fe_updated_at }),
-    to_entity: parseEntity({ id: row.te_id, name: row.te_name, type: row.te_type, summary: row.te_summary, description: row.te_description, tags: row.te_tags, aliases: row.te_aliases, created_at: row.te_created_at, updated_at: row.te_updated_at })
+    from_entity: parseEntity({ id: row.fe_id, name: row.fe_name, type: row.fe_type, parent_id: row.fe_parent_id, is_folder: row.fe_is_folder, sort_order: row.fe_sort_order, summary: row.fe_summary, description: row.fe_description, tags: row.fe_tags, aliases: row.fe_aliases, created_at: row.fe_created_at, updated_at: row.fe_updated_at }),
+    to_entity: parseEntity({ id: row.te_id, name: row.te_name, type: row.te_type, parent_id: row.te_parent_id, is_folder: row.te_is_folder, sort_order: row.te_sort_order, summary: row.te_summary, description: row.te_description, tags: row.te_tags, aliases: row.te_aliases, created_at: row.te_created_at, updated_at: row.te_updated_at })
   }))
 }

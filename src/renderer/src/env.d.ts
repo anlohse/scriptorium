@@ -24,6 +24,7 @@ interface Window {
       getContent: (id: string) => Promise<string>
       syncMentions: (documentId: string, entityIds: string[]) => Promise<{ success: boolean }>
       reorder: (updates: Array<{ id: string; sort_order: number }>) => Promise<{ success: boolean }>
+      move: (id: string, parentId: string | null) => Promise<{ success: boolean; error?: string }>
     }
     vol: {
       list: () => Promise<import('./types').Volume[]>
@@ -43,6 +44,8 @@ interface Window {
       getRelations: (entityId: string) => Promise<import('./types').Relation[]>
       getBody: (entityId: string) => Promise<string>
       saveBody: (entityId: string, content: string) => Promise<{ success: boolean }>
+      reorder: (updates: Array<{ id: string; sort_order: number }>) => Promise<{ success: boolean }>
+      move: (id: string, parentId: string | null) => Promise<{ success: boolean; error?: string }>
     }
     relation: {
       create: (data: Record<string, unknown>) => Promise<import('./types').Relation>

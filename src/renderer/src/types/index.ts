@@ -29,6 +29,7 @@ export interface Document {
   parent_id: string | null
   volume_id: string | null
   sort_order: number
+  is_folder: number
   tags: string[]
   word_count: number
   created_at: string
@@ -48,6 +49,9 @@ export interface Entity {
   id: string
   name: string
   type: 'character' | 'location' | 'event' | 'faction' | 'item' | 'concept'
+  parent_id: string | null
+  is_folder: number
+  sort_order: number
   summary: string
   description: string
   tags: string[]

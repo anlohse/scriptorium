@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3'
 
-export const CURRENT_SCHEMA_VERSION = 1
+export const CURRENT_SCHEMA_VERSION = 2
 
 interface Migration {
   version: number
@@ -117,6 +117,23 @@ const migrations: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_relations_to ON relations(to_entity_id);
         CREATE INDEX IF NOT EXISTS idx_translations_document ON translations(document_id);
         CREATE INDEX IF NOT EXISTS idx_translations_locale ON translations(locale);
+      `)
+    }
+  },
+  {
+    version: 2,
+    name: 'add_folder_hierarchy',
+    up: (db) => {
+      db.exec(`
+        ALTER TABLE documents ADD COLUMN is_folder INTEGER NOT NULL DEFAULT 0;
+
+        ALTER TABLE entities ADD COLUMN parent_id TEXT REFERENCES entities(id) ON DELETE SET NULL;
+        ALTER TABLE entities ADD COLUMN is_folder INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE entities ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+
+        CREATE INDEX IF NOT EXISTS idx_entities_parent ON entities(parent_id);
+        CREATE INDEX IF NOT EXISTS idx_documents_parent_sort ON documents(parent_id, sort_order);
+        CREATE INDEX IF NOT EXISTS idx_entities_parent_sort ON entities(parent_id, sort_order);
       `)
     }
   }

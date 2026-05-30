@@ -30,6 +30,10 @@ export interface Document {
   volume_id: string | null
   sort_order: number
   is_folder: number
+  draft_path: string | null
+  final_path: string | null
+  show_draft: number
+  completed: number
   tags: string[]
   word_count: number
   created_at: string

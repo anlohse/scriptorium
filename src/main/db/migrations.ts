@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3'
 
-export const CURRENT_SCHEMA_VERSION = 2
+export const CURRENT_SCHEMA_VERSION = 3
 
 interface Migration {
   version: number
@@ -134,6 +134,20 @@ const migrations: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_entities_parent ON entities(parent_id);
         CREATE INDEX IF NOT EXISTS idx_documents_parent_sort ON documents(parent_id, sort_order);
         CREATE INDEX IF NOT EXISTS idx_entities_parent_sort ON entities(parent_id, sort_order);
+      `)
+    }
+  },
+  {
+    version: 3,
+    name: 'add_draft_final_mode',
+    up: (db) => {
+      db.exec(`
+        ALTER TABLE documents ADD COLUMN draft_path TEXT;
+        ALTER TABLE documents ADD COLUMN final_path TEXT;
+        ALTER TABLE documents ADD COLUMN show_draft INTEGER NOT NULL DEFAULT 1;
+        ALTER TABLE documents ADD COLUMN completed INTEGER NOT NULL DEFAULT 0;
+
+        CREATE INDEX IF NOT EXISTS idx_documents_completed ON documents(completed);
       `)
     }
   }

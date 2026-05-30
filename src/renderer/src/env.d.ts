@@ -25,6 +25,10 @@ interface Window {
       syncMentions: (documentId: string, entityIds: string[]) => Promise<{ success: boolean }>
       reorder: (updates: Array<{ id: string; sort_order: number }>) => Promise<{ success: boolean }>
       move: (id: string, parentId: string | null) => Promise<{ success: boolean; error?: string }>
+      setMode: (id: string, showDraft: boolean, currentContent: string) => Promise<{ success: boolean; content: string }>
+      setCompleted: (id: string, completed: boolean, currentContent: string) => Promise<{ success: boolean; content: string }>
+      copyDraftToFinal: (id: string, currentContent: string) => Promise<{ success: boolean }>
+      copyFinalToDraft: (id: string, currentContent: string) => Promise<{ success: boolean }>
     }
     vol: {
       list: () => Promise<import('./types').Volume[]>

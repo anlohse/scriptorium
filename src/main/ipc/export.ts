@@ -169,8 +169,9 @@ export function registerExportHandlers(): void {
 
         if (!hasTranslation) {
           if (!profile.fallbackToOriginal) continue  // skip untranslated docs
-          // Fall back to original HTML
-          const filePath = doc.path.startsWith(projectPath) ? doc.path : `${projectPath}${doc.path}`
+          // Fall back to original HTML — always use final for export
+          const finalOrPath = doc.final_path || doc.path
+          const filePath = finalOrPath.startsWith(projectPath) ? finalOrPath : `${projectPath}${finalOrPath}`
           const html = readDocument(filePath)
           sectionContent = buildSection(html, true, doc.type, chapterCount, profile)
         } else {
@@ -180,8 +181,9 @@ export function registerExportHandlers(): void {
           sectionContent = buildTranslationSection(md, doc.type, chapterCount, profile)
         }
       } else {
-        // Original export
-        const filePath = doc.path.startsWith(projectPath) ? doc.path : `${projectPath}${doc.path}`
+        // Original export — always use final_path for chapters/scenes
+        const finalOrPath = doc.final_path || doc.path
+        const filePath = finalOrPath.startsWith(projectPath) ? finalOrPath : `${projectPath}${finalOrPath}`
         const html = readDocument(filePath)
         sectionContent = buildSection(html, false, doc.type, chapterCount, profile)
       }

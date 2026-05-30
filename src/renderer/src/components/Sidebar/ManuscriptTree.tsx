@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Plus, ChevronRight, ChevronDown, ChevronUp, BookMarked, FileText, Trash2, FolderPlus } from 'lucide-react'
+import { Plus, ChevronRight, ChevronDown, ChevronUp, BookMarked, FileText, Trash2, FolderPlus, CheckCircle2, PenLine } from 'lucide-react'
 import { useProjectStore } from '../../stores/projectStore'
 import { useUIStore } from '../../stores/uiStore'
 import type { Volume, Document } from '../../types'
@@ -290,6 +290,11 @@ function DocItem({ doc, scenes, isExpanded, isActive, isFirst, isLast, onToggle,
           : <div className="w-3.5 h-3.5 shrink-0" />}
         <FileText className="w-3.5 h-3.5 shrink-0" />
         <span className="flex-1 text-sm truncate">{doc.title}</span>
+        {doc.draft_path && (
+          doc.completed
+            ? <CheckCircle2 className="w-3 h-3 shrink-0 text-green-500" title="Completed" />
+            : <PenLine className="w-3 h-3 shrink-0 text-amber-400" title="In draft" />
+        )}
         <span className="hidden group-hover:block text-xs text-ink-faint mr-1">{doc.word_count > 0 ? doc.word_count : ''}</span>
         <div className="hidden group-hover:flex items-center gap-0.5">
           {!isFirst && (

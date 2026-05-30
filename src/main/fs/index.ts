@@ -181,6 +181,12 @@ export function isEmptyDirectory(dirPath: string): boolean {
 // Document files
 // ---------------------------------------------------------------------------
 
+export function getDraftPath(finalPath: string): string {
+  if (!finalPath || finalPath.startsWith('folder:')) return finalPath
+  if (finalPath.endsWith('_draft.md')) return finalPath
+  return finalPath.replace(/\.md$/, '_draft.md')
+}
+
 export function readDocument(filePath: string): string {
   if (!existsSync(filePath)) return ''
   return readFileSync(filePath, 'utf-8')

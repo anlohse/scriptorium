@@ -7,10 +7,22 @@ import {
   indexDocumentContent, updateDocumentWordCount, Document
 } from '../db/documents'
 import { syncMentions } from '../db/mentions'
-import { readDocument, writeDocument, deleteDocumentFile, getDocumentPath, ensureUniqueFilePath } from '../fs'
+import {
+  readDocument, writeDocument, deleteDocumentFile,
+  getDocumentPath, ensureUniqueFilePath, getDraftPath
+} from '../fs'
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function resolveFilePath(projectPath: string, filePath: string): string {
+  return filePath.startsWith(projectPath) ? filePath : `${projectPath}${filePath}`
+}
+
+function activeFilePath(projectPath: string, doc: Document): string {
+  if (doc.show_draft && doc.draft_path) return resolveFilePath(projectPath, doc.draft_path)
+  return resolveFilePath(projectPath, doc.final_path || doc.path)
 }
 
 function isDocDescendant(ancestorId: string, nodeId: string): boolean {
@@ -37,7 +49,7 @@ export function registerDocumentHandlers(): void {
     if (!doc) return null
     if (doc.is_folder) return { ...doc, content: '' }
     const projectPath = getCurrentProjectPath()!
-    const content = readDocument(doc.path.startsWith(projectPath) ? doc.path : `${projectPath}${doc.path}`)
+    const content = readDocument(activeFilePath(projectPath, doc))
     return { ...doc, content }
   })
 
@@ -52,37 +64,47 @@ export function registerDocumentHandlers(): void {
     const projectPath = getCurrentProjectPath()
     if (!projectPath) return { success: false, error: 'No project open' }
 
-    // Folder creation — no file needed
     if (data.is_folder) {
       const allDocs = listDocuments()
       const siblings = allDocs.filter(d =>
-        d.type === data.type &&
-        d.is_folder === 1 &&
+        d.type === data.type && d.is_folder === 1 &&
         (d.parent_id || null) === (data.parent_id || null)
       )
-      const sort_order = siblings.length
-      const folderPath = `folder:${randomUUID()}`
       const doc = createDocument({
         title: data.title,
-        path: folderPath,
+        path: `folder:${randomUUID()}`,
         type: data.type,
         parent_id: data.parent_id || null,
         volume_id: null,
-        sort_order,
+        sort_order: siblings.length,
         is_folder: 1,
+        draft_path: null,
+        final_path: null,
+        show_draft: 1,
+        completed: 0,
         tags: [],
         word_count: 0
       })
       return doc
     }
 
+    const isDraftable = data.type === 'chapter' || data.type === 'scene'
+
     const volumes = listVolumes()
     const volume = data.volume_id ? volumes.find(v => v.id === data.volume_id) : null
-    const rawPath = getDocumentPath(projectPath, data.type, volume?.title || null, data.title)
-    const filePath = ensureUniqueFilePath(rawPath)
+    const rawFinalPath = getDocumentPath(projectPath, data.type, volume?.title || null, data.title)
+    const finalPath = ensureUniqueFilePath(rawFinalPath)
+    const draftPath = isDraftable ? getDraftPath(finalPath) : null
 
-    const content = data.content || `<h1>${data.title}</h1><p></p>`
-    writeDocument(filePath, content)
+    const draftContent = data.content || `<h1>${data.title}</h1><p></p>`
+    const finalContent = ''
+
+    if (isDraftable) {
+      writeDocument(finalPath, finalContent)
+      writeDocument(draftPath!, draftContent)
+    } else {
+      writeDocument(finalPath, draftContent)
+    }
 
     const allDocs = listDocuments()
     let sort_order = 0
@@ -96,17 +118,25 @@ export function registerDocumentHandlers(): void {
 
     const doc = createDocument({
       title: data.title,
-      path: filePath,
+      path: finalPath,
       type: data.type,
       parent_id: data.parent_id || null,
       volume_id: data.volume_id || null,
       sort_order,
       is_folder: 0,
+      draft_path: draftPath,
+      final_path: isDraftable ? finalPath : null,
+      show_draft: 1,
+      completed: 0,
       tags: [],
-      word_count: content.split(/\s+/).length
+      word_count: 0
     })
 
-    indexDocumentContent(doc.id, doc.title, stripHtml(content))
+    if (isDraftable) {
+      indexDocumentContent(doc.id, doc.title, stripHtml(draftContent))
+    } else {
+      indexDocumentContent(doc.id, doc.title, stripHtml(draftContent))
+    }
     return doc
   })
 
@@ -115,11 +145,74 @@ export function registerDocumentHandlers(): void {
     if (!doc || doc.is_folder) return { success: false }
 
     const projectPath = getCurrentProjectPath()!
-    const filePath = doc.path.startsWith(projectPath) ? doc.path : `${projectPath}${doc.path}`
+    const filePath = activeFilePath(projectPath, doc)
     writeDocument(filePath, content)
     const plainText = stripHtml(content)
     updateDocumentWordCount(id, plainText)
     indexDocumentContent(id, doc.title, plainText)
+    return { success: true }
+  })
+
+  ipcMain.handle('doc:setMode', (_event, id: string, showDraft: boolean, currentContent: string) => {
+    const doc = getDocument(id)
+    if (!doc || doc.is_folder || !doc.draft_path) return { success: false, content: '' }
+
+    const projectPath = getCurrentProjectPath()!
+
+    // Save current content to current file
+    writeDocument(activeFilePath(projectPath, doc), currentContent)
+
+    // Update show_draft in DB
+    updateDocument(id, { show_draft: showDraft ? 1 : 0 })
+
+    // Read and return new file content
+    const updatedDoc = getDocument(id)!
+    const content = readDocument(activeFilePath(projectPath, updatedDoc))
+    return { success: true, content }
+  })
+
+  ipcMain.handle('doc:setCompleted', (_event, id: string, completed: boolean, currentContent: string) => {
+    const doc = getDocument(id)
+    if (!doc || doc.is_folder || !doc.draft_path) return { success: false, content: '' }
+
+    const projectPath = getCurrentProjectPath()!
+
+    // Save current content to current file
+    writeDocument(activeFilePath(projectPath, doc), currentContent)
+
+    // Completed → view final; not completed → view draft
+    const showDraft = completed ? 0 : 1
+    updateDocument(id, { completed: completed ? 1 : 0, show_draft: showDraft })
+
+    // Return new file content
+    const updatedDoc = getDocument(id)!
+    const content = readDocument(activeFilePath(projectPath, updatedDoc))
+    return { success: true, content }
+  })
+
+  ipcMain.handle('doc:copyDraftToFinal', (_event, id: string, currentContent: string) => {
+    const doc = getDocument(id)
+    if (!doc || doc.is_folder || !doc.draft_path || !doc.final_path) return { success: false }
+
+    const projectPath = getCurrentProjectPath()!
+    // Save current content first
+    writeDocument(activeFilePath(projectPath, doc), currentContent)
+
+    // Read draft, write to final
+    const draftContent = readDocument(resolveFilePath(projectPath, doc.draft_path))
+    writeDocument(resolveFilePath(projectPath, doc.final_path), draftContent)
+    return { success: true }
+  })
+
+  ipcMain.handle('doc:copyFinalToDraft', (_event, id: string, currentContent: string) => {
+    const doc = getDocument(id)
+    if (!doc || doc.is_folder || !doc.draft_path || !doc.final_path) return { success: false }
+
+    const projectPath = getCurrentProjectPath()!
+    writeDocument(activeFilePath(projectPath, doc), currentContent)
+
+    const finalContent = readDocument(resolveFilePath(projectPath, doc.final_path))
+    writeDocument(resolveFilePath(projectPath, doc.draft_path), finalContent)
     return { success: true }
   })
 
@@ -141,8 +234,12 @@ export function registerDocumentHandlers(): void {
     }
 
     const projectPath = getCurrentProjectPath()!
-    const filePath = doc.path.startsWith(projectPath) ? doc.path : `${projectPath}${doc.path}`
-    deleteDocumentFile(filePath)
+
+    // Delete both draft and final files
+    if (doc.draft_path) deleteDocumentFile(resolveFilePath(projectPath, doc.draft_path))
+    const finalOrPath = doc.final_path || doc.path
+    deleteDocumentFile(resolveFilePath(projectPath, finalOrPath))
+
     deleteDocument(id)
     return { success: true }
   })
@@ -151,8 +248,7 @@ export function registerDocumentHandlers(): void {
     const doc = getDocument(id)
     if (!doc || doc.is_folder) return ''
     const projectPath = getCurrentProjectPath()!
-    const filePath = doc.path.startsWith(projectPath) ? doc.path : `${projectPath}${doc.path}`
-    return readDocument(filePath)
+    return readDocument(activeFilePath(projectPath, doc))
   })
 
   ipcMain.handle('doc:syncMentions', (_event, documentId: string, entityIds: string[]) => {
@@ -180,12 +276,9 @@ export function registerDocumentHandlers(): void {
       }
     }
 
-    // Compute sort_order at destination
     const siblings = listDocuments({ parent_id: newParentId })
       .filter(d => d.type === doc.type && d.id !== id)
-    const sort_order = siblings.length
-
-    updateDocument(id, { parent_id: newParentId, sort_order })
+    updateDocument(id, { parent_id: newParentId, sort_order: siblings.length })
     return { success: true }
   })
 

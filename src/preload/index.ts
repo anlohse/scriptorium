@@ -27,7 +27,11 @@ const api = {
     getContent: (id: string) => ipcRenderer.invoke('doc:getContent', id),
     syncMentions: (documentId: string, entityIds: string[]) => ipcRenderer.invoke('doc:syncMentions', documentId, entityIds),
     reorder: (updates: Array<{ id: string; sort_order: number }>) => ipcRenderer.invoke('doc:reorder', updates),
-    move: (id: string, parentId: string | null) => ipcRenderer.invoke('doc:move', id, parentId)
+    move: (id: string, parentId: string | null) => ipcRenderer.invoke('doc:move', id, parentId),
+    setMode: (id: string, showDraft: boolean, currentContent: string) => ipcRenderer.invoke('doc:setMode', id, showDraft, currentContent),
+    setCompleted: (id: string, completed: boolean, currentContent: string) => ipcRenderer.invoke('doc:setCompleted', id, completed, currentContent),
+    copyDraftToFinal: (id: string, currentContent: string) => ipcRenderer.invoke('doc:copyDraftToFinal', id, currentContent),
+    copyFinalToDraft: (id: string, currentContent: string) => ipcRenderer.invoke('doc:copyFinalToDraft', id, currentContent)
   },
 
   // Volumes

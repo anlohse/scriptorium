@@ -130,14 +130,14 @@ export async function exportDocx(
           const md = stripFrontmatter(rawMd)
           blocks = mdToBlocks(md, warnings, doc.id)
         } else if (request.fallbackToOriginal) {
-          const filePath = resolveDocPath(projectPath, doc.path)
+          const filePath = resolveDocPath(projectPath, doc.final_path || doc.path)
           const html = readDocument(filePath)
           blocks = htmlToBlocks(html, warnings, doc.id)
         } else {
           continue
         }
       } else {
-        const filePath = resolveDocPath(projectPath, doc.path)
+        const filePath = resolveDocPath(projectPath, doc.final_path || doc.path)
         const html = readDocument(filePath)
         blocks = htmlToBlocks(html, warnings, doc.id)
       }

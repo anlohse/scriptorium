@@ -1,8 +1,9 @@
 import { ipcMain, dialog, app } from 'electron'
 import { join } from 'path'
-import { existsSync } from 'fs'
+import { existsSync, copyFileSync, writeFileSync } from 'fs'
 import { openDb, closeDb } from '../db'
 import { runMigrations, CURRENT_SCHEMA_VERSION } from '../db/migrations'
+import { listDocuments, updateDocument } from '../db/documents'
 import {
   createProjectStructure,
   readMetadata,
@@ -11,6 +12,7 @@ import {
   isEmptyDirectory,
   getMetadataFilePath,
   isValidProjectPath,
+  getDraftPath,
   ProjectMetadata
 } from '../fs'
 
@@ -100,6 +102,11 @@ async function openProjectAtPath(projectPath: string, allowCreate = false): Prom
       return { success: false, error: `Migration failed: ${(err as Error).message}` }
     }
 
+    // After migration v3: create draft files for existing chapters/scenes
+    if (projectVersion < 3 && newVersion >= 3) {
+      migrateDocumentFilesToDraftFinal(projectPath)
+    }
+
     // Update metadata only after successful migration
     const updated = updateMetadata(projectPath, {
       databaseSchemaVersion: newVersion,
@@ -110,6 +117,38 @@ async function openProjectAtPath(projectPath: string, allowCreate = false): Prom
 
   currentProjectPath = projectPath
   return { success: true, projectPath, config: metadata }
+}
+
+// ---------------------------------------------------------------------------
+// Draft/final file migration for existing chapters and scenes
+// ---------------------------------------------------------------------------
+
+function migrateDocumentFilesToDraftFinal(projectPath: string): void {
+  const docs = listDocuments()
+  for (const doc of docs) {
+    if ((doc.type === 'chapter' || doc.type === 'scene') && !doc.is_folder && !doc.draft_path) {
+      const finalPath = doc.path
+      const draftPath = getDraftPath(finalPath)
+      const absFinal = finalPath.startsWith(projectPath) ? finalPath : `${projectPath}${finalPath}`
+      const absDraft = draftPath.startsWith(projectPath) ? draftPath : `${projectPath}${draftPath}`
+
+      // Copy existing content into the draft file
+      if (!existsSync(absDraft)) {
+        if (existsSync(absFinal)) {
+          copyFileSync(absFinal, absDraft)
+        } else {
+          writeFileSync(absDraft, '', 'utf-8')
+        }
+      }
+
+      updateDocument(doc.id, {
+        draft_path: draftPath,
+        final_path: finalPath,
+        show_draft: 1,
+        completed: 0
+      })
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

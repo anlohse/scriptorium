@@ -16,7 +16,6 @@ import { ImagePickerDialog } from './ImagePickerDialog'
 
 const AUTOSAVE_DELAY = 2000
 
-// Extend Image to support width and height attributes
 const ExtendedImage = Image.extend({
   addAttributes() {
     return {
@@ -37,24 +36,32 @@ const ExtendedImage = Image.extend({
 
 export function Editor(): React.ReactElement {
   const { activeDocumentId } = useUIStore()
-  const { documents, assets } = useProjectStore()
+  const { documents, assets, refreshDocuments } = useProjectStore()
   const { setContent, markDirty, markClean, setSaving, setWordCount, setLastSaved, reset } = useEditorStore()
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const currentDocId = useRef<string | null>(null)
   const isLoading = useRef(false)
   const [showImagePicker, setShowImagePicker] = useState(false)
+  const [showDraft, setShowDraft] = useState(true)
 
-  const activeDoc = documents.find(d => d.id === activeDocumentId)
+  const activeDoc = documents.find(d => d.id === activeDocumentId) ?? null
+  const isDraftable = !!(activeDoc && (activeDoc.type === 'chapter' || activeDoc.type === 'scene') && activeDoc.draft_path)
 
-  const save = useCallback(async (docId: string, html: string, text: string): Promise<void> => {
+  useEffect(() => {
+    if (activeDoc) setShowDraft(Boolean(activeDoc.show_draft))
+  }, [activeDoc?.id, activeDoc?.show_draft])
+
+  const cancelPendingSave = (): void => {
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null }
+  }
+
+  const save = useCallback(async (docId: string, html: string): Promise<void> => {
     setSaving(true)
     try {
       await window.api.doc.save(docId, html)
-
       const mentionMatches = html.match(/data-id="([^"]+)"/g) || []
       const entityIds = [...new Set(mentionMatches.map(m => m.replace('data-id="', '').replace('"', '')))]
       await window.api.doc.syncMentions(docId, entityIds)
-
       markClean()
       setLastSaved(new Date())
     } finally {
@@ -85,22 +92,16 @@ export function Editor(): React.ReactElement {
       const text = editor.getText()
       setContent(html)
       markDirty()
-      const words = text.trim() ? text.trim().split(/\s+/).length : 0
-      setWordCount(words)
-
+      setWordCount(text.trim() ? text.trim().split(/\s+/).length : 0)
       if (currentDocId.current) {
-        if (saveTimer.current) clearTimeout(saveTimer.current)
-        saveTimer.current = setTimeout(() => {
-          save(currentDocId.current!, html, text)
-        }, AUTOSAVE_DELAY)
+        cancelPendingSave()
+        saveTimer.current = setTimeout(() => save(currentDocId.current!, html), AUTOSAVE_DELAY)
       }
     }
   })
 
-  // Load document when selection changes
   useEffect(() => {
     if (!editor) return
-
     if (!activeDocumentId) {
       editor.setEditable(false)
       editor.commands.setContent('')
@@ -108,46 +109,37 @@ export function Editor(): React.ReactElement {
       reset()
       return
     }
-
     const loadDoc = async (): Promise<void> => {
       isLoading.current = true
       editor.setEditable(false)
       reset()
-
+      cancelPendingSave()
       const content = await window.api.doc.getContent(activeDocumentId)
       currentDocId.current = activeDocumentId
-
       editor.commands.setContent(content || '')
       editor.setEditable(true)
       isLoading.current = false
-
       const text = editor.getText()
       setWordCount(text.trim() ? text.trim().split(/\s+/).length : 0)
     }
-
     loadDoc()
   }, [activeDocumentId, editor])
 
-  // Drop images + mention click navigation
   useEffect(() => {
     if (!editor) return
     const el = editor.view.dom
-
     const handleDrop = (e: DragEvent): void => {
       e.preventDefault()
       const files = e.dataTransfer?.files
       if (!files) return
       Array.from(files).forEach(file => {
         if (file.type.startsWith('image/')) {
-          const url = URL.createObjectURL(file)
-          editor.chain().focus().setImage({ src: url }).run()
+          editor.chain().focus().setImage({ src: URL.createObjectURL(file) }).run()
         }
       })
     }
-
     const handleClick = (e: MouseEvent): void => {
-      const target = e.target as HTMLElement
-      const mention = target.closest('.mention') as HTMLElement | null
+      const mention = (e.target as HTMLElement).closest('.mention') as HTMLElement | null
       if (mention) {
         const entityId = mention.getAttribute('data-id')
         if (entityId) {
@@ -156,29 +148,69 @@ export function Editor(): React.ReactElement {
         }
       }
     }
-
     el.addEventListener('drop', handleDrop)
     el.addEventListener('click', handleClick)
-    return () => {
-      el.removeEventListener('drop', handleDrop)
-      el.removeEventListener('click', handleClick)
-    }
+    return () => { el.removeEventListener('drop', handleDrop); el.removeEventListener('click', handleClick) }
   }, [editor])
+
+  // ── Draft/Final handlers ──────────────────────────────────────────────────
+
+  const handleSetMode = async (newShowDraft: boolean): Promise<void> => {
+    if (!editor || !currentDocId.current || !isDraftable || newShowDraft === showDraft) return
+    cancelPendingSave()
+    setShowDraft(newShowDraft)
+    editor.setEditable(false)
+    const result = await window.api.doc.setMode(currentDocId.current, newShowDraft, editor.getHTML())
+    if (result.success) {
+      isLoading.current = true
+      editor.commands.setContent(result.content || '')
+      isLoading.current = false
+      markClean()
+    } else {
+      setShowDraft(!newShowDraft)
+    }
+    editor.setEditable(true)
+    await refreshDocuments()
+  }
+
+  const handleSetCompleted = async (completed: boolean): Promise<void> => {
+    if (!editor || !currentDocId.current || !isDraftable) return
+    cancelPendingSave()
+    editor.setEditable(false)
+    const result = await window.api.doc.setCompleted(currentDocId.current, completed, editor.getHTML())
+    if (result.success) {
+      isLoading.current = true
+      editor.commands.setContent(result.content || '')
+      isLoading.current = false
+      markClean()
+    }
+    editor.setEditable(true)
+    await refreshDocuments()
+  }
+
+  const handleCopyDraftToFinal = async (): Promise<void> => {
+    if (!editor || !currentDocId.current || !isDraftable) return
+    if (!confirm('Copy draft content to final? This will overwrite the final version.')) return
+    cancelPendingSave()
+    await window.api.doc.copyDraftToFinal(currentDocId.current, editor.getHTML())
+    markClean()
+  }
+
+  const handleCopyFinalToDraft = async (): Promise<void> => {
+    if (!editor || !currentDocId.current || !isDraftable) return
+    if (!confirm('Copy final content to draft? This will overwrite the draft.')) return
+    cancelPendingSave()
+    await window.api.doc.copyFinalToDraft(currentDocId.current, editor.getHTML())
+    markClean()
+  }
 
   const handleInsertAssetImage = (src: string, width: number | null, height: number | null, alt: string): void => {
     if (!editor) return
-    editor.chain().focus().setImage({
-      src,
-      alt,
-      ...(width ? { width: String(width) } : {}),
-      ...(height ? { height: String(height) } : {})
-    }).run()
+    editor.chain().focus().setImage({ src, alt, ...(width ? { width: String(width) } : {}), ...(height ? { height: String(height) } : {}) }).run()
     setShowImagePicker(false)
   }
 
-  if (!activeDocumentId) {
-    return <EmptyState />
-  }
+  if (!activeDocumentId) return <EmptyState />
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-white">
@@ -186,25 +218,33 @@ export function Editor(): React.ReactElement {
         <EditorToolbar
           editor={editor}
           onInsertAssetImage={() => setShowImagePicker(true)}
+          activeDoc={activeDoc}
+          showDraft={showDraft}
+          onSetMode={handleSetMode}
+          onSetCompleted={handleSetCompleted}
+          onCopyDraftToFinal={handleCopyDraftToFinal}
+          onCopyFinalToDraft={handleCopyFinalToDraft}
         />
       )}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-[70ch] mx-auto px-8 py-12">
           {activeDoc && (
-            <h1 className="text-2xl font-bold text-ink mb-6 font-serif" contentEditable={false}>
-              {activeDoc.title}
-            </h1>
+            <div className="mb-6 flex items-baseline gap-2">
+              <h1 className="text-2xl font-bold text-ink font-serif flex-1" contentEditable={false}>
+                {activeDoc.title}
+              </h1>
+              {isDraftable && (
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${showDraft ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                  {showDraft ? 'Draft' : 'Final'}
+                </span>
+              )}
+            </div>
           )}
           <EditorContent editor={editor} />
         </div>
       </div>
-
       {showImagePicker && (
-        <ImagePickerDialog
-          assets={assets}
-          onInsert={handleInsertAssetImage}
-          onClose={() => setShowImagePicker(false)}
-        />
+        <ImagePickerDialog assets={assets} onInsert={handleInsertAssetImage} onClose={() => setShowImagePicker(false)} />
       )}
     </div>
   )

@@ -3,7 +3,8 @@ import type { Editor } from '@tiptap/react'
 import {
   Bold, Italic, Strikethrough, List, ListOrdered, Quote,
   Heading1, Heading2, Heading3, Minus, Undo, Redo, ImagePlus,
-  CopyCheck, ClipboardCopy, CheckCircle2, PenLine
+  CopyCheck, ClipboardCopy, CheckCircle2, PenLine,
+  CornerDownLeft, SeparatorHorizontal
 } from 'lucide-react'
 import type { Document } from '../../types'
 
@@ -84,8 +85,14 @@ export function EditorToolbar({
       <ToolBtn onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} title="Blockquote">
         <Quote className="w-3.5 h-3.5" />
       </ToolBtn>
-      <ToolBtn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Divider">
+      <ToolBtn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Horizontal rule">
         <Minus className="w-3.5 h-3.5" />
+      </ToolBtn>
+      <ToolBtn onClick={() => editor.chain().focus().setHardBreak().run()} title="Line break">
+        <CornerDownLeft className="w-3.5 h-3.5" />
+      </ToolBtn>
+      <ToolBtn onClick={() => editor.chain().focus().insertContent({ type: 'pageBreak' }).run()} title="Page break">
+        <SeparatorHorizontal className="w-3.5 h-3.5" />
       </ToolBtn>
       <Sep />
       <ToolBtn onClick={onInsertAssetImage} title="Insert image from assets">

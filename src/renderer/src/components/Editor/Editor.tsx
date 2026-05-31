@@ -10,6 +10,7 @@ import { useUIStore } from '../../stores/uiStore'
 import { useProjectStore } from '../../stores/projectStore'
 import { useEditorStore } from '../../stores/editorStore'
 import { mentionSuggestion } from './mentionSuggestion'
+import { PageBreak } from './PageBreakExtension'
 import { EditorToolbar } from './EditorToolbar'
 import { EmptyState } from './EmptyState'
 import { ImagePickerDialog } from './ImagePickerDialog'
@@ -82,7 +83,8 @@ export function Editor(): React.ReactElement {
         renderHTML({ node }) {
           return ['span', { class: 'mention', 'data-id': node.attrs.id, 'data-label': node.attrs.label }, `[[${node.attrs.label}]]`]
         }
-      })
+      }),
+      PageBreak
     ],
     content: '',
     editable: false,

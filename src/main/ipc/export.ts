@@ -22,6 +22,7 @@ export interface ExportProfile {
 
 function htmlToMarkdown(html: string): string {
   return html
+    .replace(/<div[^>]*data-type=["']page-break["'][^>]*>.*?<\/div>/gis, '{{page-break}}\n\n')
     .replace(/<h1[^>]*>(.*?)<\/h1>/gis, '# $1\n\n')
     .replace(/<h2[^>]*>(.*?)<\/h2>/gis, '## $1\n\n')
     .replace(/<h3[^>]*>(.*?)<\/h3>/gis, '### $1\n\n')
@@ -47,6 +48,10 @@ function htmlToMarkdown(html: string): string {
     .replace(/&#39;/g, "'")
     .replace(/\n{3,}/g, '\n\n')
     .trim()
+}
+
+function stripPageBreaks(html: string): string {
+  return html.replace(/<div[^>]*data-type=["']page-break["'][^>]*>.*?<\/div>/gis, '')
 }
 
 function stripMentionTags(html: string): string {
@@ -88,7 +93,7 @@ function markdownToHtml(md: string): string {
 
 function buildSection(html: string, isOriginalFallback: boolean, docType: string, chapterCount: number, profile: ExportProfile): string {
   if (profile.format === 'html') {
-    let section = stripMentionTags(html)
+    let section = stripPageBreaks(stripMentionTags(html))
     if (profile.chapterNumbering && docType === 'chapter') {
       section = `<h2>Chapter ${chapterCount}</h2>` + section.replace(/<h1[^>]*>.*?<\/h1>/i, '')
     }

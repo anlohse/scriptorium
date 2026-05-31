@@ -95,6 +95,33 @@
   font-style: italic;
 }
 .ProseMirror hr { border: none; border-top: 1px solid #e0d9cc; margin: 2em 0; }
+
+/* Page break node */
+.ProseMirror .page-break-node {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0;
+  color: #888;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: default;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+.ProseMirror .page-break-node::before,
+.ProseMirror .page-break-node::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid #aaa;
+  border-bottom: 1px solid #ddd;
+  height: 3px;
+}
+.ProseMirror .page-break-node.ProseMirror-selectednode {
+  outline: 2px solid #7c5cbf;
+  border-radius: 2px;
+}
 .ProseMirror code {
   background: #f0ede6;
   border-radius: 3px;

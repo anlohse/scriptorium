@@ -128,8 +128,17 @@ function processBlockTokens(
       }
 
       case 'paragraph': {
-        // Check if the paragraph is a standalone image
         const inlineTokens = (token.tokens as MToken[]) || []
+        // Check for page break marker
+        if (
+          inlineTokens.length === 1 &&
+          inlineTokens[0].type === 'text' &&
+          ((inlineTokens[0].text as string) || '').trim() === '{{page-break}}'
+        ) {
+          blocks.push({ type: 'pageBreak' })
+          break
+        }
+        // Check if the paragraph is a standalone image
         if (inlineTokens.length === 1 && inlineTokens[0].type === 'image') {
           const img = inlineTokens[0]
           blocks.push({

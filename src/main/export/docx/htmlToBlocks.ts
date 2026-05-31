@@ -176,6 +176,9 @@ function nodesToBlocks(nodes: AnyNode[]): ExportBlock[] {
     } else if (tag === 'hr') {
       blocks.push({ type: 'horizontalRule' })
 
+    } else if (tag === 'div' && node.attribs['data-type'] === 'page-break') {
+      blocks.push({ type: 'pageBreak' })
+
     } else if (tag === 'pre') {
       const codeEl = node.children.find(c => isEl(c) && (c as ElNode).name === 'code')
       const lang = codeEl ? ((codeEl as ElNode).attribs.class || '').replace('language-', '') || undefined : undefined

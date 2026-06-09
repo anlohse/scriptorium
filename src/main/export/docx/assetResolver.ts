@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'fs'
 import { join, isAbsolute, resolve, dirname, extname } from 'path'
 import { fileURLToPath } from 'url'
-import sizeOf from 'image-size'
+import { imageSize } from 'image-size'
 
 export interface ResolvedAsset {
   absolutePath: string
@@ -85,11 +85,12 @@ export function resolveAsset(
     let heightPx = 400
 
     try {
-      const dims = sizeOf(data)
+      const dims = imageSize(data)
       if (dims.width) widthPx = dims.width
       if (dims.height) heightPx = dims.height
-    } catch {
+    } catch (error:any) {
       // Proceed with default dimensions if image-size fails
+      console.warn(`Could not determine dimensions for image ${absPath}: ${error.message}`)
     }
 
     return {
@@ -99,7 +100,8 @@ export function resolveAsset(
       heightPx,
       data
     }
-  } catch {
+  } catch (error:any) {
+    console.error(`Error reading asset ${absPath}: ${error.message}`)
     return null
   }
 }

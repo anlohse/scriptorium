@@ -70,6 +70,11 @@ interface Window {
       run: (profile: Record<string, unknown>) => Promise<{ canceled?: boolean; success?: boolean; outputPath?: string; error?: string }>
       docx: (request: Record<string, unknown>) => Promise<{ success: boolean; outputPath?: string; warnings: Array<{ code: string; message: string }>; error?: string }>
     }
+    spell: {
+      checkWords: (locale: string, words: string[], projectPath: string) => Promise<Record<string, string[]>>
+      addWord: (word: string, locale: string, projectPath: string) => Promise<{ success: boolean; error?: string }>
+      getCustomWords: (locale: string, projectPath: string) => Promise<string[]>
+    }
     translation: {
       list: (documentId?: string) => Promise<import('./types').Translation[]>
       get: (id: string) => Promise<import('./types').Translation | null>

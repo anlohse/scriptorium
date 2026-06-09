@@ -11,6 +11,8 @@ import { useProjectStore } from '../../stores/projectStore'
 import { useEditorStore } from '../../stores/editorStore'
 import { mentionSuggestion } from './mentionSuggestion'
 import { PageBreak } from './PageBreakExtension'
+import { SpellCheck } from './SpellCheckExtension'
+import { SpellCheckMenu, type SpellMenuState } from './SpellCheckMenu'
 import { EditorToolbar } from './EditorToolbar'
 import { EmptyState } from './EmptyState'
 import { ImagePickerDialog } from './ImagePickerDialog'
@@ -44,6 +46,9 @@ export function Editor(): React.ReactElement {
   const isLoading = useRef(false)
   const [showImagePicker, setShowImagePicker] = useState(false)
   const [showDraft, setShowDraft] = useState(true)
+  const [spellEnabled, setSpellEnabled] = useState(true)
+  const [spellLocale, setSpellLocale] = useState('en-US')
+  const [spellMenu, setSpellMenu] = useState<SpellMenuState | null>(null)
 
   const activeDoc = documents.find(d => d.id === activeDocumentId) ?? null
   const isDraftable = !!(activeDoc && (activeDoc.type === 'chapter' || activeDoc.type === 'scene') && activeDoc.draft_path)
@@ -84,7 +89,8 @@ export function Editor(): React.ReactElement {
           return ['span', { class: 'mention', 'data-id': node.attrs.id, 'data-label': node.attrs.label }, `[[${node.attrs.label}]]`]
         }
       }),
-      PageBreak
+      PageBreak,
+      SpellCheck
     ],
     content: '',
     editable: false,
@@ -123,6 +129,7 @@ export function Editor(): React.ReactElement {
       isLoading.current = false
       const text = editor.getText()
       setWordCount(text.trim() ? text.trim().split(/\s+/).length : 0)
+      editor.commands.triggerSpellCheck()
     }
     loadDoc()
   }, [activeDocumentId, editor])
@@ -148,12 +155,33 @@ export function Editor(): React.ReactElement {
           useUIStore.getState().setActiveEntity(entityId)
           useUIStore.getState().setInspectorOpen(true)
         }
+        return
+      }
+      const spellEl = (e.target as HTMLElement).closest('.spell-error') as HTMLElement | null
+      if (spellEl) {
+        const word = spellEl.getAttribute('data-spell-word') ?? ''
+        const suggestions = JSON.parse(spellEl.getAttribute('data-spell-suggestions') ?? '[]') as string[]
+        const from = parseInt(spellEl.getAttribute('data-spell-from') ?? '0', 10)
+        const to = parseInt(spellEl.getAttribute('data-spell-to') ?? '0', 10)
+        setSpellMenu({ word, suggestions, from, to, rect: spellEl.getBoundingClientRect() })
       }
     }
     el.addEventListener('drop', handleDrop)
     el.addEventListener('click', handleClick)
     return () => { el.removeEventListener('drop', handleDrop); el.removeEventListener('click', handleClick) }
   }, [editor])
+
+  // ── Spell check settings sync ────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!editor) return
+    editor.commands.setSpellCheckEnabled(spellEnabled)
+  }, [editor, spellEnabled])
+
+  useEffect(() => {
+    if (!editor) return
+    editor.commands.setSpellCheckLocale(spellLocale)
+  }, [editor, spellLocale])
 
   // ── Draft/Final handlers ──────────────────────────────────────────────────
 
@@ -206,6 +234,25 @@ export function Editor(): React.ReactElement {
     markClean()
   }
 
+  const handleSpellAccept = (suggestion: string, from: number, to: number): void => {
+    if (!editor) return
+    // Verify the word still occupies these positions before replacing
+    try {
+      const current = editor.state.doc.textBetween(from, to)
+      if (current.toLowerCase() === spellMenu?.word.toLowerCase()) {
+        editor.chain().focus().deleteRange({ from, to }).insertContentAt(from, suggestion).run()
+      }
+    } catch { /* positions stale — skip */ }
+  }
+
+  const handleSpellIgnore = (word: string): void => {
+    editor?.commands.ignoreSpellWord(word)
+  }
+
+  const handleSpellAddToDict = (word: string): void => {
+    editor?.commands.addSpellWord(word)
+  }
+
   const handleInsertAssetImage = (src: string, width: number | null, height: number | null, alt: string): void => {
     if (!editor) return
     editor.chain().focus().setImage({ src, alt, ...(width ? { width: String(width) } : {}), ...(height ? { height: String(height) } : {}) }).run()
@@ -226,6 +273,10 @@ export function Editor(): React.ReactElement {
           onSetCompleted={handleSetCompleted}
           onCopyDraftToFinal={handleCopyDraftToFinal}
           onCopyFinalToDraft={handleCopyFinalToDraft}
+          spellEnabled={spellEnabled}
+          spellLocale={spellLocale}
+          onToggleSpell={setSpellEnabled}
+          onSetSpellLocale={setSpellLocale}
         />
       )}
       <div className="flex-1 overflow-y-auto">
@@ -247,6 +298,15 @@ export function Editor(): React.ReactElement {
       </div>
       {showImagePicker && (
         <ImagePickerDialog assets={assets} onInsert={handleInsertAssetImage} onClose={() => setShowImagePicker(false)} />
+      )}
+      {spellMenu && (
+        <SpellCheckMenu
+          state={spellMenu}
+          onAccept={handleSpellAccept}
+          onIgnore={handleSpellIgnore}
+          onAddToDictionary={handleSpellAddToDict}
+          onClose={() => setSpellMenu(null)}
+        />
       )}
     </div>
   )

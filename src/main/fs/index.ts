@@ -274,6 +274,39 @@ export function deleteEntityBody(projectPath: string, entityId: string): void {
 }
 
 // ---------------------------------------------------------------------------
+// Custom dictionary files: {projectPath}/.scriptorium/dictionaries/custom-<locale>.txt
+// ---------------------------------------------------------------------------
+
+export function getCustomDictDir(projectPath: string): string {
+  return join(projectPath, '.scriptorium', 'dictionaries')
+}
+
+export function getCustomDictPath(projectPath: string, locale: string): string {
+  return join(getCustomDictDir(projectPath), `custom-${locale}.txt`)
+}
+
+export function readCustomDict(projectPath: string, locale: string): string[] {
+  const p = getCustomDictPath(projectPath, locale)
+  if (!existsSync(p)) return []
+  try {
+    return readFileSync(p, 'utf-8')
+      .split('\n')
+      .map(w => w.trim())
+      .filter(Boolean)
+  } catch { return [] }
+}
+
+export function writeCustomDictWord(projectPath: string, locale: string, word: string): void {
+  const dir = getCustomDictDir(projectPath)
+  mkdirSync(dir, { recursive: true })
+  const p = getCustomDictPath(projectPath, locale)
+  const existing = new Set(readCustomDict(projectPath, locale))
+  if (existing.has(word.trim())) return
+  const words = [...existing, word.trim()].sort()
+  writeFileSync(p, words.join('\n') + '\n', 'utf-8')
+}
+
+// ---------------------------------------------------------------------------
 // Translation files: {projectPath}/translations/{locale}/{docRelPath}
 // ---------------------------------------------------------------------------
 

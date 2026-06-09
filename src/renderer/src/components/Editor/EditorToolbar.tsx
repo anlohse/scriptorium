@@ -4,7 +4,7 @@ import {
   Bold, Italic, Strikethrough, List, ListOrdered, Quote,
   Heading1, Heading2, Heading3, Minus, Undo, Redo, ImagePlus,
   CopyCheck, ClipboardCopy, CheckCircle2, PenLine,
-  CornerDownLeft, SeparatorHorizontal
+  CornerDownLeft, SeparatorHorizontal, SpellCheck
 } from 'lucide-react'
 import type { Document } from '../../types'
 
@@ -17,6 +17,10 @@ interface Props {
   onSetCompleted: (completed: boolean) => void
   onCopyDraftToFinal: () => void
   onCopyFinalToDraft: () => void
+  spellEnabled: boolean
+  spellLocale: string
+  onToggleSpell: (enabled: boolean) => void
+  onSetSpellLocale: (locale: string) => void
 }
 
 export function EditorToolbar({
@@ -27,7 +31,11 @@ export function EditorToolbar({
   onSetMode,
   onSetCompleted,
   onCopyDraftToFinal,
-  onCopyFinalToDraft
+  onCopyFinalToDraft,
+  spellEnabled,
+  spellLocale,
+  onToggleSpell,
+  onSetSpellLocale
 }: Props): React.ReactElement {
   const ToolBtn = ({ onClick, active, title, children }: {
     onClick: () => void; active?: boolean; title: string; children: React.ReactNode
@@ -98,6 +106,25 @@ export function EditorToolbar({
       <ToolBtn onClick={onInsertAssetImage} title="Insert image from assets">
         <ImagePlus className="w-3.5 h-3.5" />
       </ToolBtn>
+      <Sep />
+      <ToolBtn
+        onClick={() => onToggleSpell(!spellEnabled)}
+        active={spellEnabled}
+        title={spellEnabled ? 'Spell check on (click to disable)' : 'Spell check off (click to enable)'}
+      >
+        <SpellCheck className="w-3.5 h-3.5" />
+      </ToolBtn>
+      {spellEnabled && (
+        <select
+          value={spellLocale}
+          onChange={e => onSetSpellLocale(e.target.value)}
+          className="text-xs border border-surface-200 rounded px-1 py-0.5 bg-transparent text-ink-muted hover:bg-surface-100 cursor-pointer"
+          title="Spell check language"
+        >
+          <option value="en-US">EN</option>
+          <option value="pt-BR">PT</option>
+        </select>
+      )}
 
       {isDraftable && (
         <>

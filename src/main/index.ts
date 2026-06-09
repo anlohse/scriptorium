@@ -8,6 +8,7 @@ import { registerExportHandlers } from './ipc/export'
 import { registerProjectHandlers } from './ipc/project'
 import { registerAssetHandlers } from './ipc/assets'
 import { registerTranslationHandlers } from './ipc/translations'
+import { registerSpellCheckHandlers } from './ipc/spellcheck'
 import { closeDb } from './db'
 
 let mainWindow: BrowserWindow | null = null
@@ -63,6 +64,7 @@ app.whenReady().then(() => {
   registerExportHandlers()
   registerAssetHandlers()
   registerTranslationHandlers()
+  registerSpellCheckHandlers()
 
   createWindow()
 

@@ -269,3 +269,13 @@
   line-height: 1.75;
 }
 
+/* Spell check underlines */
+.ProseMirror .spell-error {
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: #e05252;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+

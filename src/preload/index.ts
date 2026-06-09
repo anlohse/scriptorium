@@ -86,6 +86,13 @@ const api = {
     docx: (request: Record<string, unknown>) => ipcRenderer.invoke('export:docx', request)
   },
 
+  // Spell check
+  spell: {
+    checkWords: (locale: string, words: string[], projectPath: string) => ipcRenderer.invoke('spell:checkWords', locale, words, projectPath),
+    addWord: (word: string, locale: string, projectPath: string) => ipcRenderer.invoke('spell:addWord', word, locale, projectPath),
+    getCustomWords: (locale: string, projectPath: string) => ipcRenderer.invoke('spell:getCustomWords', locale, projectPath)
+  },
+
   // Translations
   translation: {
     list: (documentId?: string) => ipcRenderer.invoke('translation:list', documentId),

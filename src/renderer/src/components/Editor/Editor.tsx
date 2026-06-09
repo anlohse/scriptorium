@@ -39,7 +39,7 @@ const ExtendedImage = Image.extend({
 
 export function Editor(): React.ReactElement {
   const { activeDocumentId } = useUIStore()
-  const { documents, assets, refreshDocuments } = useProjectStore()
+  const { documents, assets, refreshDocuments, projectPath, config } = useProjectStore()
   const { setContent, markDirty, markClean, setSaving, setWordCount, setLastSaved, reset } = useEditorStore()
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const currentDocId = useRef<string | null>(null)
@@ -172,6 +172,14 @@ export function Editor(): React.ReactElement {
   }, [editor])
 
   // ── Spell check settings sync ────────────────────────────────────────────
+
+  // Derive default locale from the project's language setting whenever the project changes
+  useEffect(() => {
+    if (!projectPath) return
+    const lang = config?.defaultLanguage ?? ''
+    const locale = lang.startsWith('pt') ? 'pt-BR' : 'en-US'
+    setSpellLocale(locale)
+  }, [projectPath])  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!editor) return

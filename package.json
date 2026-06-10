@@ -15,6 +15,7 @@
     "build:linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
+    "@cspell/dict-pt-br": "^2.4.2",
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^3.0.0",
     "@tiptap/extension-character-count": "^2.11.7",
@@ -27,6 +28,7 @@
     "@tiptap/starter-kit": "^2.11.7",
     "@tiptap/suggestion": "^2.11.7",
     "better-sqlite3": "^11.10.0",
+    "cspell-lib": "^10.0.1",
     "dictionary-en-us": "^2.2.1",
     "dictionary-pt-br": "^2.0.1",
     "docx": "^9.7.1",

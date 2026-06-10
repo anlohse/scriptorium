@@ -126,7 +126,7 @@ export function migrateLegacyProjectConfig(projectPath: string, appVersion: stri
 // Project structure creation
 // ---------------------------------------------------------------------------
 
-export function createProjectStructure(projectPath: string, name: string, appVersion: string): ProjectMetadata {
+export function createProjectStructure(projectPath: string, name: string, appVersion: string, defaultLanguage = ''): ProjectMetadata {
   const dirs = [
     projectPath,
     join(projectPath, 'manuscript'),
@@ -149,8 +149,8 @@ export function createProjectStructure(projectPath: string, name: string, appVer
     createdAt: new Date().toISOString(),
     createdWithAppVersion: appVersion,
     lastOpenedWithAppVersion: appVersion,
-    defaultLanguage: '',
-    languages: [],
+    defaultLanguage,
+    languages: defaultLanguage ? [defaultLanguage] : [],
     paths: {
       database: 'novel.db',
       manuscript: 'manuscript',

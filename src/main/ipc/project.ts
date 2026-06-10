@@ -161,7 +161,7 @@ export function registerProjectHandlers(): void {
     const { join: pjoin } = await import('path')
     const projectPath = pjoin(parentDir, name.replace(/[^a-z0-9\s-]/gi, '').replace(/\s+/g, '-').toLowerCase())
 
-    const metadata = createProjectStructure(projectPath, name, appVersion)
+    const metadata = createProjectStructure(projectPath, name, appVersion, app.getLocale())
     const db = openDb(projectPath)
     const newVersion = runMigrations(db, 0)
     const config = updateMetadata(projectPath, { databaseSchemaVersion: newVersion }) ?? metadata
@@ -194,7 +194,7 @@ export function registerProjectHandlers(): void {
     const parentDir = result.filePaths[0]
     const projectPath = pjoin(parentDir, name.replace(/[^a-z0-9\s-]/gi, '').replace(/\s+/g, '-').toLowerCase())
 
-    const metadata = createProjectStructure(projectPath, name, appVersion)
+    const metadata = createProjectStructure(projectPath, name, appVersion, app.getLocale())
     const db = openDb(projectPath)
     const newVersion = runMigrations(db, 0)
     const config = updateMetadata(projectPath, { databaseSchemaVersion: newVersion }) ?? metadata

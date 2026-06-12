@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3'
 
-export const CURRENT_SCHEMA_VERSION = 3
+export const CURRENT_SCHEMA_VERSION = 4
 
 interface Migration {
   version: number
@@ -149,6 +149,33 @@ const migrations: Migration[] = [
 
         CREATE INDEX IF NOT EXISTS idx_documents_completed ON documents(completed);
       `)
+    }
+  },
+  {
+    version: 4,
+    name: 'fix_fts_tables',
+    up: (db) => {
+      // Rebuild FTS tables without content='' (contentless mode).
+      // Contentless FTS5 does not support snippet()/highlight(), which broke search.
+      db.exec(`
+        DROP TABLE IF EXISTS documents_fts;
+        DROP TABLE IF EXISTS entities_fts;
+
+        CREATE VIRTUAL TABLE documents_fts USING fts5(id UNINDEXED, title, content);
+        CREATE VIRTUAL TABLE entities_fts  USING fts5(id UNINDEXED, name, summary, description);
+      `)
+
+      // Repopulate entities (all data available in the DB).
+      db.prepare(`
+        INSERT INTO entities_fts (id, name, summary, description)
+        SELECT id, name, summary, description FROM entities WHERE is_folder = 0
+      `).run()
+
+      // Repopulate document titles (content lives in files; will be re-indexed on next save).
+      db.prepare(`
+        INSERT INTO documents_fts (id, title, content)
+        SELECT id, title, '' FROM documents WHERE is_folder = 0
+      `).run()
     }
   }
 ]

@@ -3,76 +3,81 @@ import { getDb } from './index'
 export interface SearchResult {
   id: string
   title: string
-  type: 'document' | 'entity'
+  type: 'chapter' | 'note' | 'entity'
   subtype: string
   snippet: string
   score: number
 }
 
-export function searchAll(query: string): SearchResult[] {
-  const db = getDb()
-  const results: SearchResult[] = []
+export type SearchScope = 'all' | 'chapters' | 'notes' | 'entities'
 
-  if (!query.trim()) return []
-
-  try {
-    const docRows = db.prepare(`
-      SELECT d.id, d.title, d.type,
-        snippet(documents_fts, 2, '<mark>', '</mark>', '...', 20) as snippet,
-        rank as score
-      FROM documents_fts
-      JOIN documents d ON documents_fts.id = d.id
-      WHERE documents_fts MATCH ?
-      ORDER BY rank
-      LIMIT 50
-    `).all(query) as Array<{ id: string; title: string; type: string; snippet: string; score: number }>
-
-    docRows.forEach(row => {
-      results.push({ id: row.id, title: row.title, type: 'document', subtype: row.type, snippet: row.snippet || '', score: row.score })
-    })
-  } catch {}
-
-  try {
-    const entityRows = db.prepare(`
-      SELECT e.id, e.name as title, e.type,
-        snippet(entities_fts, 2, '<mark>', '</mark>', '...', 20) as snippet,
-        rank as score
-      FROM entities_fts
-      JOIN entities e ON entities_fts.id = e.id
-      WHERE entities_fts MATCH ?
-      ORDER BY rank
-      LIMIT 50
-    `).all(query) as Array<{ id: string; title: string; type: string; snippet: string; score: number }>
-
-    entityRows.forEach(row => {
-      results.push({ id: row.id, title: row.title, type: 'entity', subtype: row.type, snippet: row.snippet || '', score: row.score })
-    })
-  } catch {}
-
-  return results.sort((a, b) => a.score - b.score)
+// Escape user input so it's treated as a literal phrase match in FTS5.
+function ftsQuery(q: string): string {
+  return q.trim().split(/\s+/).filter(Boolean).map(t => `"${t.replace(/"/g, '')}"` ).join(' ')
 }
 
-export function searchDocuments(query: string, filters?: { type?: string; volume_id?: string }): SearchResult[] {
+function queryDocuments(fts: string, types: string[]): SearchResult[] {
   const db = getDb()
-  if (!query.trim()) return []
-
+  const placeholders = types.map(() => '?').join(', ')
   try {
-    let sql = `
+    const rows = db.prepare(`
       SELECT d.id, d.title, d.type,
-        snippet(documents_fts, 2, '<mark>', '</mark>', '...', 20) as snippet,
-        rank as score
+        snippet(documents_fts, 2, '<mark>', '</mark>', '…', 20) AS snippet,
+        rank AS score
       FROM documents_fts
       JOIN documents d ON documents_fts.id = d.id
       WHERE documents_fts MATCH ?
-    `
-    const params: unknown[] = [query]
-    if (filters?.type) { sql += ' AND d.type = ?'; params.push(filters.type) }
-    if (filters?.volume_id) { sql += ' AND d.volume_id = ?'; params.push(filters.volume_id) }
-    sql += ' ORDER BY rank LIMIT 100'
-
-    const rows = db.prepare(sql).all(...params) as Array<{ id: string; title: string; type: string; snippet: string; score: number }>
-    return rows.map(row => ({ id: row.id, title: row.title, type: 'document' as const, subtype: row.type, snippet: row.snippet || '', score: row.score }))
+        AND d.type IN (${placeholders})
+        AND d.is_folder = 0
+      ORDER BY rank
+      LIMIT 40
+    `).all(fts, ...types) as Array<{ id: string; title: string; type: string; snippet: string; score: number }>
+    return rows.map(r => ({
+      id: r.id, title: r.title,
+      type: (r.type === 'chapter' || r.type === 'scene') ? 'chapter' : 'note',
+      subtype: r.type, snippet: r.snippet ?? '', score: r.score
+    }))
   } catch {
     return []
   }
+}
+
+function queryEntities(fts: string): SearchResult[] {
+  const db = getDb()
+  try {
+    const rows = db.prepare(`
+      SELECT e.id, e.name AS title, e.type,
+        snippet(entities_fts, -1, '<mark>', '</mark>', '…', 20) AS snippet,
+        rank AS score
+      FROM entities_fts
+      JOIN entities e ON entities_fts.id = e.id
+      WHERE entities_fts MATCH ?
+        AND e.is_folder = 0
+      ORDER BY rank
+      LIMIT 40
+    `).all(fts) as Array<{ id: string; title: string; type: string; snippet: string; score: number }>
+    return rows.map(r => ({ id: r.id, title: r.title, type: 'entity' as const, subtype: r.type, snippet: r.snippet ?? '', score: r.score }))
+  } catch {
+    return []
+  }
+}
+
+export function searchQuery(query: string, scope: SearchScope): SearchResult[] {
+  if (!query.trim()) return []
+  const fts = ftsQuery(query)
+  const results: SearchResult[] = []
+
+  if (scope === 'all' || scope === 'chapters') {
+    results.push(...queryDocuments(fts, ['chapter', 'scene']))
+  }
+  if (scope === 'all' || scope === 'notes') {
+    results.push(...queryDocuments(fts, ['note', 'lore']))
+  }
+  if (scope === 'all' || scope === 'entities') {
+    results.push(...queryEntities(fts))
+  }
+
+  return scope === 'all'
+    ? results.sort((a, b) => a.score - b.score).slice(0, 100)
+    : results
 }

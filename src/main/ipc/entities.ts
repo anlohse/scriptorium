@@ -9,6 +9,7 @@ import { getMentionsByEntity } from '../db/mentions'
 import { getCurrentProjectPath } from './project'
 import { getEntityBodyPath, deleteEntityBody } from '../fs'
 import { existsSync } from 'fs'
+import { queueEntityIndex, queueEntityDelete } from '../search/indexer'
 
 export function registerEntityHandlers(): void {
   ipcMain.handle('entity:list', (_event, type?: string) => {
@@ -20,11 +21,19 @@ export function registerEntityHandlers(): void {
   })
 
   ipcMain.handle('entity:create', (_event, data: Omit<Entity, 'id' | 'created_at' | 'updated_at'>) => {
-    return createEntity(data)
+    const entity = createEntity(data)
+    if (entity && !entity.is_folder) {
+      queueEntityIndex(entity.id, entity.name, entity.summary, entity.description)
+    }
+    return entity
   })
 
   ipcMain.handle('entity:update', (_event, id: string, data: Partial<Omit<Entity, 'id' | 'created_at'>>) => {
-    return updateEntity(id, data)
+    const entity = updateEntity(id, data)
+    if (entity && !entity.is_folder) {
+      queueEntityIndex(entity.id, entity.name, entity.summary, entity.description)
+    }
+    return entity
   })
 
   ipcMain.handle('entity:delete', (_event, id: string) => {
@@ -45,6 +54,7 @@ export function registerEntityHandlers(): void {
     }
 
     deleteEntity(id)
+    if (!entity.is_folder) queueEntityDelete(id)
     return { success: true }
   })
 

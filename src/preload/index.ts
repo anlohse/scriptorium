@@ -76,8 +76,7 @@ const api = {
 
   // Search
   search: {
-    all: (query: string) => ipcRenderer.invoke('search:all', query),
-    documents: (query: string, filters?: Record<string, unknown>) => ipcRenderer.invoke('search:documents', query, filters)
+    query: (query: string, scope: string) => ipcRenderer.invoke('search:query', query, scope)
   },
 
   // Export

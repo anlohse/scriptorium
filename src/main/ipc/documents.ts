@@ -4,13 +4,14 @@ import { getCurrentProjectPath } from './project'
 import {
   createDocument, getDocument, updateDocument, deleteDocument, listDocuments,
   createVolume, listVolumes, updateVolume, deleteVolume,
-  indexDocumentContent, updateDocumentWordCount, Document
+  updateDocumentWordCount, Document
 } from '../db/documents'
 import { syncMentions } from '../db/mentions'
 import {
   readDocument, writeDocument, deleteDocumentFile,
   getDocumentPath, ensureUniqueFilePath, getDraftPath
 } from '../fs'
+import { queueDocumentIndex, queueDocumentDelete } from '../search/indexer'
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
@@ -132,11 +133,7 @@ export function registerDocumentHandlers(): void {
       word_count: 0
     })
 
-    if (isDraftable) {
-      indexDocumentContent(doc.id, doc.title, stripHtml(draftContent))
-    } else {
-      indexDocumentContent(doc.id, doc.title, stripHtml(draftContent))
-    }
+    queueDocumentIndex(doc.id, doc.title, stripHtml(draftContent))
     return doc
   })
 
@@ -149,7 +146,7 @@ export function registerDocumentHandlers(): void {
     writeDocument(filePath, content)
     const plainText = stripHtml(content)
     updateDocumentWordCount(id, plainText)
-    indexDocumentContent(id, doc.title, plainText)
+    queueDocumentIndex(id, doc.title, plainText)
     return { success: true }
   })
 
@@ -241,6 +238,7 @@ export function registerDocumentHandlers(): void {
     deleteDocumentFile(resolveFilePath(projectPath, finalOrPath))
 
     deleteDocument(id)
+    queueDocumentDelete(id)
     return { success: true }
   })
 

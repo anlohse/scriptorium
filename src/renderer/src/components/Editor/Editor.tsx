@@ -13,6 +13,8 @@ import { mentionSuggestion } from './mentionSuggestion'
 import { PageBreak } from './PageBreakExtension'
 import { SpellCheck } from './SpellCheckExtension'
 import { SpellCheckMenu, type SpellMenuState } from './SpellCheckMenu'
+import { LocalSearch } from './LocalSearchExtension'
+import { LocalSearchBar } from './LocalSearchBar'
 import { EditorToolbar } from './EditorToolbar'
 import { EmptyState } from './EmptyState'
 import { ImagePickerDialog } from './ImagePickerDialog'
@@ -38,7 +40,7 @@ const ExtendedImage = Image.extend({
 })
 
 export function Editor(): React.ReactElement {
-  const { activeDocumentId } = useUIStore()
+  const { activeDocumentId, localSearchOpen, closeLocalSearch } = useUIStore()
   const { documents, assets, refreshDocuments, projectPath, config } = useProjectStore()
   const { setContent, markDirty, markClean, setSaving, setWordCount, setLastSaved, reset } = useEditorStore()
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -90,7 +92,8 @@ export function Editor(): React.ReactElement {
         }
       }),
       PageBreak,
-      SpellCheck
+      SpellCheck,
+      LocalSearch
     ],
     content: '',
     editable: false,
@@ -130,6 +133,8 @@ export function Editor(): React.ReactElement {
       const text = editor.getText()
       setWordCount(text.trim() ? text.trim().split(/\s+/).length : 0)
       editor.commands.triggerSpellCheck()
+      editor.commands.clearLocalSearch()
+      closeLocalSearch()
     }
     loadDoc()
   }, [activeDocumentId, editor])
@@ -271,6 +276,9 @@ export function Editor(): React.ReactElement {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-white">
+      {editor && localSearchOpen && (
+        <LocalSearchBar editor={editor} onClose={() => { editor.commands.clearLocalSearch(); closeLocalSearch() }} />
+      )}
       {editor && (
         <EditorToolbar
           editor={editor}

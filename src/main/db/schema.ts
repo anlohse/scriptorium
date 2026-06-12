@@ -68,18 +68,14 @@ export function initSchema(db: Database.Database): void {
     CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
       id UNINDEXED,
       title,
-      content,
-      content='',
-      contentless_delete=1
+      content
     );
 
     CREATE VIRTUAL TABLE IF NOT EXISTS entities_fts USING fts5(
       id UNINDEXED,
       name,
       summary,
-      description,
-      content='',
-      contentless_delete=1
+      description
     );
 
     CREATE TABLE IF NOT EXISTS translations (

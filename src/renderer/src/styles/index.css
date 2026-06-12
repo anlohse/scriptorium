@@ -279,3 +279,14 @@
   cursor: pointer;
 }
 
+.ProseMirror .local-search-match {
+  background-color: #fef08a;
+  border-radius: 2px;
+}
+
+.ProseMirror .local-search-current {
+  background-color: #fb923c;
+  color: white;
+  border-radius: 2px;
+}
+

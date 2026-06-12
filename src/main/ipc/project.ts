@@ -15,6 +15,7 @@ import {
   getDraftPath,
   ProjectMetadata
 } from '../fs'
+import { startIndexer, stopIndexer } from '../search/indexer'
 
 let currentProjectPath: string | null = null
 
@@ -97,6 +98,7 @@ async function openProjectAtPath(projectPath: string, allowCreate = false): Prom
     try {
       newVersion = runMigrations(db, projectVersion)
     } catch (err) {
+      stopIndexer()
       closeDb()
       currentProjectPath = null
       return { success: false, error: `Migration failed: ${(err as Error).message}` }
@@ -116,6 +118,7 @@ async function openProjectAtPath(projectPath: string, allowCreate = false): Prom
   }
 
   currentProjectPath = projectPath
+  startIndexer(join(projectPath, metadata.paths?.database ?? 'novel.db'))
   return { success: true, projectPath, config: metadata }
 }
 
@@ -166,6 +169,7 @@ export function registerProjectHandlers(): void {
     const newVersion = runMigrations(db, 0)
     const config = updateMetadata(projectPath, { databaseSchemaVersion: newVersion }) ?? metadata
     currentProjectPath = projectPath
+    startIndexer(join(projectPath, 'novel.db'))
     return { success: true, projectPath, config }
   })
 
@@ -199,10 +203,12 @@ export function registerProjectHandlers(): void {
     const newVersion = runMigrations(db, 0)
     const config = updateMetadata(projectPath, { databaseSchemaVersion: newVersion }) ?? metadata
     currentProjectPath = projectPath
+    startIndexer(join(projectPath, 'novel.db'))
     return { success: true, projectPath, config }
   })
 
   ipcMain.handle('project:close', async () => {
+    stopIndexer()
     closeDb()
     currentProjectPath = null
     return { success: true }

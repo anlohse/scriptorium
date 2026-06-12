@@ -19,6 +19,7 @@ interface UIState {
   activeEntityId: string | null
   inspectorOpen: boolean
   searchOpen: boolean
+  localSearchOpen: boolean
   searchQuery: string
   sidebarWidth: number
   inspectorWidth: number
@@ -32,6 +33,8 @@ interface UIState {
   setInspectorOpen: (open: boolean) => void
   openSearch: () => void
   closeSearch: () => void
+  openLocalSearch: () => void
+  closeLocalSearch: () => void
   setSearchQuery: (query: string) => void
   setSidebarWidth: (w: number) => void
   setInspectorWidth: (w: number) => void
@@ -45,6 +48,7 @@ export const useUIStore = create<UIState>((set) => ({
   activeEntityId: null,
   inspectorOpen: true,
   searchOpen: false,
+  localSearchOpen: false,
   searchQuery: '',
   sidebarWidth: loadWidth(SIDEBAR_WIDTH_KEY, 260),
   inspectorWidth: loadWidth(INSPECTOR_WIDTH_KEY, 320),
@@ -58,6 +62,8 @@ export const useUIStore = create<UIState>((set) => ({
   setInspectorOpen: (open) => set({ inspectorOpen: open }),
   openSearch: () => set({ searchOpen: true }),
   closeSearch: () => set({ searchOpen: false }),
+  openLocalSearch: () => set({ localSearchOpen: true }),
+  closeLocalSearch: () => set({ localSearchOpen: false }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setSidebarWidth: (w) => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, String(w))

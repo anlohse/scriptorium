@@ -50,10 +50,6 @@ export function createEntity(data: Omit<Entity, 'id' | 'created_at' | 'updated_a
     now, now
   )
 
-  if (!data.is_folder) {
-    db.prepare('INSERT INTO entities_fts (id, name, summary, description) VALUES (?, ?, ?, ?)').run(id, data.name, data.summary, data.description)
-  }
-
   return getEntity(id)!
 }
 
@@ -73,18 +69,12 @@ export function updateEntity(id: string, data: Partial<Omit<Entity, 'id' | 'crea
   const values = Object.values(serialized)
   db.prepare(`UPDATE entities SET ${fields}, updated_at = ? WHERE id = ?`).run(...values, now, id)
 
-  const entity = getEntity(id)
-  if (entity && !entity.is_folder) {
-    db.prepare('DELETE FROM entities_fts WHERE id = ?').run(id)
-    db.prepare('INSERT INTO entities_fts (id, name, summary, description) VALUES (?, ?, ?, ?)').run(id, entity.name, entity.summary, entity.description)
-  }
-  return entity
+  return getEntity(id)
 }
 
 export function deleteEntity(id: string): void {
   const db = getDb()
   db.prepare('DELETE FROM entities WHERE id = ?').run(id)
-  db.prepare('DELETE FROM entities_fts WHERE id = ?').run(id)
 }
 
 export function listEntities(type?: string): Entity[] {

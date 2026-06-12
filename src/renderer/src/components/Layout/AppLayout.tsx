@@ -13,7 +13,7 @@ const MIN_INSPECTOR = 220
 const MAX_INSPECTOR = 600
 
 export function AppLayout(): React.ReactElement {
-  const { inspectorOpen, searchOpen, closeSearch, sidebarWidth, inspectorWidth, setSidebarWidth, setInspectorWidth, translationId } = useUIStore()
+  const { inspectorOpen, searchOpen, closeSearch, openSearch, openLocalSearch, sidebarWidth, inspectorWidth, setSidebarWidth, setInspectorWidth, translationId } = useUIStore()
   const draggingRef = useRef<'sidebar' | 'inspector' | null>(null)
   const startXRef = useRef(0)
   const startWidthRef = useRef(0)
@@ -23,7 +23,8 @@ export function AppLayout(): React.ReactElement {
     const handleKeyDown = (e: KeyboardEvent): void => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault()
-        useUIStore.getState().openSearch()
+        const inEditor = (e.target as HTMLElement)?.closest('.ProseMirror') !== null
+        inEditor ? openLocalSearch() : openSearch()
       }
       if (e.key === 'Escape' && searchOpen) {
         closeSearch()

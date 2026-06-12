@@ -93,10 +93,12 @@ export interface Asset {
   updated_at: string
 }
 
+export type SearchScope = 'all' | 'chapters' | 'notes' | 'entities'
+
 export interface SearchResult {
   id: string
   title: string
-  type: 'document' | 'entity'
+  type: 'chapter' | 'note' | 'entity'
   subtype: string
   snippet: string
   score: number

@@ -63,8 +63,7 @@ interface Window {
       delete: (id: string) => Promise<{ success: boolean }>
     }
     search: {
-      all: (query: string) => Promise<import('./types').SearchResult[]>
-      documents: (query: string, filters?: Record<string, unknown>) => Promise<import('./types').SearchResult[]>
+      query: (query: string, scope: import('./types').SearchScope) => Promise<import('./types').SearchResult[]>
     }
     export: {
       run: (profile: Record<string, unknown>) => Promise<{ canceled?: boolean; success?: boolean; outputPath?: string; error?: string }>

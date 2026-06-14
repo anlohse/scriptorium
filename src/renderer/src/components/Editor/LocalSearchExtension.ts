@@ -66,10 +66,7 @@ export const LocalSearch = Extension.create({
         if (dispatch) {
           dispatch(tr.setMeta(LOCAL_SEARCH_KEY, { term, matches, current, decorations }))
           if (matches.length > 0) {
-            editor.chain()
-              .setTextSelection({ from: matches[0].from, to: matches[0].to })
-              .scrollIntoView()
-              .run()
+            editor.view.dom.querySelector('.local-search-current')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
           }
         }
         return true
@@ -82,8 +79,7 @@ export const LocalSearch = Extension.create({
         const decorations = buildDecorations(editor.state.doc, state.matches, current)
         if (dispatch) {
           dispatch(tr.setMeta(LOCAL_SEARCH_KEY, { ...state, current, decorations }))
-          const m = state.matches[current]
-          editor.chain().setTextSelection({ from: m.from, to: m.to }).scrollIntoView().run()
+          editor.view.dom.querySelector('.local-search-current')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
         }
         return true
       },
@@ -95,8 +91,7 @@ export const LocalSearch = Extension.create({
         const decorations = buildDecorations(editor.state.doc, state.matches, current)
         if (dispatch) {
           dispatch(tr.setMeta(LOCAL_SEARCH_KEY, { ...state, current, decorations }))
-          const m = state.matches[current]
-          editor.chain().setTextSelection({ from: m.from, to: m.to }).scrollIntoView().run()
+          editor.view.dom.querySelector('.local-search-current')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
         }
         return true
       },
